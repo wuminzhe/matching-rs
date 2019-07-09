@@ -1,0 +1,11 @@
+[package]
+name = "matching-rs"
+version = "0.1.0"
+authors = ["Wu Minzhe <wuminzhe@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+intrusive-collections = "0.6"
+bigdecimal = "0.1.0"
+mysql = "*"
+chrono = "0.4"
