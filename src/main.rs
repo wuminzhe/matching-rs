@@ -12,20 +12,12 @@ use crate::side::Side;
 use crate::limit_order::LimitOrder;
 use crate::engine::Engine;
 
-use chrono::prelude::*;
+mod models;
+mod managers;
 
-mod data;
-mod manager;
-
-use manager::OrderManager;
-
-#[derive(Debug, PartialEq, Eq)]
-struct Member {
-    id: u32,
-    email: Option<String>,
-    phone: Option<String>,
-    created_at: Option<NaiveDateTime>,
-}
+use mysql::Pool;
+use models::Order;
+use managers::OrderManager;
 
 fn main() -> Result<(), Error>{
 
@@ -54,10 +46,10 @@ fn main() -> Result<(), Error>{
     // }
     
 
-    let pool = mysql::Pool::new("mysql://root:123456@localhost:3306/matching").unwrap();
+    let pool = Pool::new("mysql://root:123456@localhost:3306/matching").unwrap();
     let on_trade = |trade_price: f64, trade_volume: f64, trade_funds: f64| {
         println!("price: {}, volume: {}", trade_price, trade_volume);
-        println!("{:?}", data::Order::find(&pool));
+        println!("{:?}", Order::find(&pool));
     };
 
     let mut order_manager = OrderManager::new(&pool, &on_trade);

@@ -1,6 +1,5 @@
-use crate::data::Order;
-
 use mysql::Pool;
+use crate::models::Order;
 use crate::side::Side;
 use crate::limit_order::LimitOrder;
 use crate::engine::Engine;
