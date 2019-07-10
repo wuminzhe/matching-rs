@@ -23,15 +23,18 @@ impl LimitOrder {
         }
     }
 
-    pub fn fill(&mut self, trade_volume: f64) {
+    pub fn fill(&mut self, trade_volume: f64, volume_decimals: u32) -> bool {
         if self.volume >= trade_volume {
             let result = BigDecimal::from_f64(self.volume).unwrap() - BigDecimal::from_f64(trade_volume).unwrap();
             self.volume = result.to_f64().unwrap();
         } 
+
+        self.filled(volume_decimals)
     }
 
-    pub fn is_filled(&self) -> bool {
-        self.volume <= 0.0
+    pub fn filled(&self, volume_decimals: u32) -> bool {
+        let min_volume = 1.0_f64 / (10_u64.pow(volume_decimals)) as f64;
+        self.volume < min_volume
     }
 
     fn is_crossed(&self, price: f64) -> bool {
@@ -55,10 +58,6 @@ impl LimitOrder {
         }
     }
 
-    pub fn is_tiny(&self, volume_decimals: u32) -> bool {
-        let min_volume = 1.0_f64 / (10_u64.pow(volume_decimals)) as f64;
-        self.volume < min_volume
-    }
 }
 
 #[cfg(test)]
@@ -86,7 +85,7 @@ mod tests {
         limit_order.fill(10.0);
         assert_eq!(limit_order.volume, 22.12);
         limit_order.fill(22.12);
-        assert!(limit_order.is_filled());
+        assert!(limit_order.filled(8));
     }
 
     #[test]

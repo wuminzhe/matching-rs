@@ -11,12 +11,22 @@ pub struct Engine<'a>
     market: String,
     order_book_pair: OrderBookPair,
     volume_decimals: u32,
-    on_trade: &'a Fn(f64, f64, f64),
+    on_trade: &'a Fn(TradeEvent),
+}
+
+pub struct TradeEvent {
+    pub price: f64,
+    pub volume: f64,
+    pub funds: f64,
+    pub ask_order_id: u64,
+    pub ask_order_filled: bool,
+    pub bid_order_id: u64,
+    pub bid_order_filled: bool,
 }
 
 impl<'a> Engine<'a> 
 {
-    pub fn new(market: String, volume_decimals: u32, on_trade: &Fn(f64, f64, f64)) -> Engine {
+    pub fn new(market: String, volume_decimals: u32, on_trade: &Fn(TradeEvent)) -> Engine {
         Engine {
             market: market,
             order_book_pair: OrderBookPair::new(),
@@ -29,28 +39,61 @@ impl<'a> Engine<'a>
         let (book, counter_book) = self.order_book_pair.get_books_mut(order.side);
         let on_trade = &(self.on_trade);
         Engine::do_matching(on_trade, &mut order, counter_book, self.volume_decimals);
-        if !&order.is_filled() {
+        if !&order.filled(self.volume_decimals) {
             book.add(order);
         }
     }
 
-    fn do_matching(on_trade: &Fn(f64, f64, f64), order: &mut LimitOrder, counter_book: &mut OrderBook, volume_decimals: u32) {
-        if !order.is_filled() && !order.is_tiny(volume_decimals) {
-            match counter_book.top() {
-                Some(counter_order) => {
-                    match order.trade_with(counter_order) {
-                        Some((trade_price, trade_volume, trade_funds)) => {
-                            on_trade(trade_price, trade_volume, trade_funds);
-                            counter_book.fill_top(trade_volume);
-                            order.fill(trade_volume);
+    fn do_matching(on_trade: &Fn(TradeEvent), order: &mut LimitOrder, counter_book: &mut OrderBook, volume_decimals: u32) {
+        match counter_book.top() {
+            Some(counter_order) => {
+                match order.trade_with(counter_order) {
+                    Some((trade_price, trade_volume, trade_funds)) => {
+
+                        let order_id = order.id;
+                        let counter_order_id = counter_order.id;
+
+                        let counter_order_filled = counter_book.fill_top(trade_volume, volume_decimals);
+                        let order_filled = order.fill(trade_volume, volume_decimals);
+
+                        match order.side {
+                            Side::Sell => {
+                                let trade_event = TradeEvent {
+                                    price: trade_price,
+                                    volume: trade_volume,
+                                    funds: trade_funds,
+                                    ask_order_id: order_id,
+                                    ask_order_filled: order_filled,
+                                    bid_order_id: counter_order_id,
+                                    bid_order_filled: counter_order_filled,
+                                };
+                                on_trade(trade_event)
+                            },
+                            Side::Buy => {
+                                let trade_event = TradeEvent {
+                                    price: trade_price,
+                                    volume: trade_volume,
+                                    funds: trade_funds,
+                                    ask_order_id: counter_order_id,
+                                    ask_order_filled: counter_order_filled,
+                                    bid_order_id: order_id,
+                                    bid_order_filled: order_filled,
+                                };
+                                on_trade(trade_event)
+                            } 
+                        }
+
+                        if !order_filled {
                             Engine::do_matching(on_trade, order, counter_book, volume_decimals);
-                        },
-                        None => ()
-                    }
-                },
-                None => ()
-            }
+                        } 
+
+                    },
+                    None => ()
+                }
+            },
+            None => ()
         }
+
     }
 }
 
@@ -80,27 +123,6 @@ mod tests {
         };
         engine.submit(order2);
         return engine;
-    }
-
-    #[test]
-    fn can_check_tiny() {
-        let order = LimitOrder {
-            id: 123456,
-            price: 1.34,
-            volume: 0.000000009,
-            side: Side::Buy,
-            timestamp: 12345678
-        };
-        assert!(&order.is_tiny(8));
-
-        let order2 = LimitOrder {
-            id: 123457,
-            price: 1.34,
-            volume: 0.00000001,
-            side: Side::Buy,
-            timestamp: 12345678
-        };
-        assert!(!&order2.is_tiny(8));
     }
 
     #[test]

@@ -1,13 +1,17 @@
 use chrono::prelude::NaiveDateTime;
+use mysql::prelude::GenericConnection;
+use bigdecimal::BigDecimal;
+use bigdecimal::FromPrimitive;
+use bigdecimal::ToPrimitive;
 
 #[derive(Debug)]
 pub struct Order {
-    id: u32,
+    id: u64,
     price: f64,
     volume: f64,
     origin_volume: f64,
     state: u16,
-    side: u8,
+    side: u8, //0: ask, 1: buy
     trades_count: u16,
     created_by: Option<String>,
     created_at: Option<NaiveDateTime>,
@@ -34,6 +38,30 @@ impl Order {
         )).unwrap().last_insert_id();
 
         id
+    }
+
+    pub fn sub_volume<T>(conn: &mut T, id: u64, delta_volume: f64, filled: bool)
+    where T: GenericConnection
+    {
+        let mut stmt = conn.prepare(r"UPDATE orders SET trades_count=trades_count+1, volume=volume-cast(:trade_volume as decimal(32,16)), state=:state WHERE id=:id").unwrap();
+        let state = if filled { DONE } else { WAIT };
+        stmt.execute((
+            delta_volume,
+            state,
+            id,
+        ));
+    }
+
+    pub fn add_volume<T>(conn: &mut T, id: u64, delta_volume: f64, filled: bool)
+    where T: GenericConnection
+    {
+        let mut stmt = conn.prepare(r"update orders set trades_count=trades_count+1, volume=volume+cast(:trade_volume as decimal(32,16)), state=:state where id=:id").unwrap();
+        let state = if filled { DONE } else { WAIT };
+        stmt.execute((
+            delta_volume,
+            state,
+            id,
+        ));
     }
 
     pub fn find(pool: &mysql::Pool) -> Vec<Order> {

@@ -11,15 +11,16 @@ mod engine;
 use crate::side::Side;
 use crate::limit_order::LimitOrder;
 use crate::engine::Engine;
+use crate::engine::TradeEvent;
 
 mod models;
 mod managers;
 
-use mysql::Pool;
-use models::Order;
+use mysql::*;
+use models::*;
 use managers::OrderManager;
 
-fn main() -> Result<(), Error>{
+fn main(){
 
     // let path = "./src/orders.csv";
     // let input = File::open(path)?;
@@ -47,14 +48,22 @@ fn main() -> Result<(), Error>{
     
 
     let pool = Pool::new("mysql://root:123456@localhost:3306/matching").unwrap();
-    let on_trade = |trade_price: f64, trade_volume: f64, trade_funds: f64| {
-        println!("price: {}, volume: {}", trade_price, trade_volume);
-        println!("{:?}", Order::find(&pool));
+
+    let on_trade = |event: TradeEvent| {
+        println!("price: {}, volume: {}", event.price, event.volume);
+        &pool
+            .start_transaction(false, Some(IsolationLevel::RepeatableRead), Some(false))
+            .and_then(|mut tx| {
+                Trade::create(&mut tx, event.price, event.volume, event.ask_order_id, event.bid_order_id);
+
+                Order::sub_volume(&mut tx, event.ask_order_id, event.volume, event.ask_order_filled);
+                Order::add_volume(&mut tx, event.bid_order_id, event.volume, event.bid_order_filled);
+                tx.commit()
+            });
     };
 
     let mut order_manager = OrderManager::new(&pool, &on_trade);
-    order_manager.submit(0.13, 1299.0, 0, "123456");
-    order_manager.submit(0.12, 10.0, 1, "123456");
-    Ok(())
+    order_manager.submit(0.12, 11.000000035, 0, "u123456");
+    order_manager.submit(0.13, 11.00000003, 1, "u123456");
 
 }

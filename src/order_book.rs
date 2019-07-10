@@ -79,16 +79,18 @@ impl OrderBook {
         }
     }
 
-    pub fn fill_top(&mut self, trade_volume: f64) {
+    pub fn fill_top(&mut self, trade_volume: f64, volume_decimals: u32) -> bool {
         match self.top_mut() {
             Some(top_order) => {
-                top_order.fill(trade_volume);
-                if top_order.is_filled() {
+                if top_order.fill(trade_volume, volume_decimals) {
                     let o = &top_order.clone();
                     self.remove(o);
+                    true
+                } else {
+                    false
                 }
             },
-            None => ()
+            None => true
         }
     }
     
