@@ -6,7 +6,6 @@ use crate::engine::LimitOrder;
 pub struct Engine<'a>
 {
     order_book_pair: OrderBookPair,
-    volume_decimals: u32,
     on_trade: &'a dyn Fn(TradeEvent),
 }
 
@@ -22,10 +21,9 @@ pub struct TradeEvent {
 
 impl<'a> Engine<'a> 
 {
-    pub fn new(volume_decimals: u32, on_trade: &dyn Fn(TradeEvent)) -> Engine {
+    pub fn new(on_trade: &dyn Fn(TradeEvent)) -> Engine {
         Engine {
             order_book_pair: OrderBookPair::new(),
-            volume_decimals: volume_decimals,
             on_trade: on_trade,
         }
     }
@@ -33,18 +31,13 @@ impl<'a> Engine<'a>
     pub fn submit(&mut self, mut order: LimitOrder) {
         let (book, counter_book) = self.order_book_pair.get_books_mut(order.side);
         let on_trade = &(self.on_trade);
-        Engine::do_matching(on_trade, &mut order, counter_book, self.volume_decimals);
-        if !Engine::filled(&order, self.volume_decimals) {
+        Engine::do_matching(on_trade, &mut order, counter_book);
+        if !order.filled() {
             book.add(order);
         }
     }
 
-    fn filled(order: &LimitOrder, volume_decimals: u32) -> bool {
-        let min_volume = 1.0_f64 / (10_u64.pow(volume_decimals)) as f64;
-        order.volume < min_volume
-    }
-
-    fn do_matching(on_trade: &dyn Fn(TradeEvent), order: &mut LimitOrder, counter_book: &mut OrderBook, volume_decimals: u32) {
+    fn do_matching(on_trade: &dyn Fn(TradeEvent), order: &mut LimitOrder, counter_book: &mut OrderBook) {
         match counter_book.top_mut() {
             Some(counter_order) => {
                 match order.trade_with(counter_order) {
@@ -58,9 +51,9 @@ impl<'a> Engine<'a>
                         counter_order.fill(trade_volume);
 
                         // filled?
-                        let order_filled = Engine::filled(&order, volume_decimals);
+                        let order_filled = order.filled();
                         let cloned_counter_order = counter_order.clone();
-                        let counter_order_filled = Engine::filled(&cloned_counter_order, volume_decimals);
+                        let counter_order_filled = cloned_counter_order.filled();
 
                         // if counter_order has filled, remove it from counter_book
                         if counter_order_filled {
@@ -95,7 +88,7 @@ impl<'a> Engine<'a>
                         }
 
                         if !order_filled {
-                            Engine::do_matching(on_trade, order, counter_book, volume_decimals);
+                            Engine::do_matching(on_trade, order, counter_book);
                         } 
 
                     },

@@ -30,6 +30,10 @@ impl LimitOrder {
         } 
     }
 
+    pub fn filled(&self) -> bool {
+        self.volume <= 0.0
+    }
+
     fn is_crossed(&self, price: f64) -> bool {
         match self.side {
             Side::Sell => price >= self.price,

@@ -52,8 +52,10 @@ fn main(){
             });
     };
 
-    let mut order_manager = OrderManager::new(&pool, &on_trade);
-    order_manager.submit(0.12, 11.000000035, 0, "u123456");
-    order_manager.submit(0.13, 11.00000003, 1, "u123456");
+    let mut order_manager = OrderManager::new(&pool, &on_trade, 8, 8);
+    // order_manager.submit(0.12, 11.000000035, 0, "u123456");
+    // order_manager.submit(0.13, 11.00000003, 1, "u123456");
 
+    order_manager.submit(0.000003456, 11.000000035, 0, "u123456");
+    order_manager.submit(0.000004,    11.0000000315, 1, "u123456");
 }
