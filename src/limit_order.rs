@@ -23,18 +23,11 @@ impl LimitOrder {
         }
     }
 
-    pub fn fill(&mut self, trade_volume: f64, volume_decimals: u32) -> bool {
+    pub fn fill(&mut self, trade_volume: f64) {
         if self.volume >= trade_volume {
             let result = BigDecimal::from_f64(self.volume).unwrap() - BigDecimal::from_f64(trade_volume).unwrap();
             self.volume = result.to_f64().unwrap();
         } 
-
-        self.filled(volume_decimals)
-    }
-
-    pub fn filled(&self, volume_decimals: u32) -> bool {
-        let min_volume = 1.0_f64 / (10_u64.pow(volume_decimals)) as f64;
-        self.volume < min_volume
     }
 
     fn is_crossed(&self, price: f64) -> bool {

@@ -6,6 +6,9 @@ use bigdecimal::BigDecimal;
 use bigdecimal::FromPrimitive;
 use bigdecimal::ToPrimitive;
 
+static PRICE_DECIMALS: u32 = 8;
+static VOLUME_DECIMALS: u32 = 8;
+
 pub struct Engine<'a>
 {
     market: String,
@@ -39,13 +42,18 @@ impl<'a> Engine<'a>
         let (book, counter_book) = self.order_book_pair.get_books_mut(order.side);
         let on_trade = &(self.on_trade);
         Engine::do_matching(on_trade, &mut order, counter_book, self.volume_decimals);
-        if !&order.filled(self.volume_decimals) {
+        if !Engine::filled(&order, self.volume_decimals) {
             book.add(order);
         }
     }
 
+    fn filled(order: &LimitOrder, volume_decimals: u32) -> bool {
+        let min_volume = 1.0_f64 / (10_u64.pow(volume_decimals)) as f64;
+        order.volume < min_volume
+    }
+
     fn do_matching(on_trade: &Fn(TradeEvent), order: &mut LimitOrder, counter_book: &mut OrderBook, volume_decimals: u32) {
-        match counter_book.top() {
+        match counter_book.top_mut() {
             Some(counter_order) => {
                 match order.trade_with(counter_order) {
                     Some((trade_price, trade_volume, trade_funds)) => {
@@ -53,8 +61,19 @@ impl<'a> Engine<'a>
                         let order_id = order.id;
                         let counter_order_id = counter_order.id;
 
-                        let counter_order_filled = counter_book.fill_top(trade_volume, volume_decimals);
-                        let order_filled = order.fill(trade_volume, volume_decimals);
+                        // fill orders
+                        order.fill(trade_volume);
+                        counter_order.fill(trade_volume);
+
+                        // filled?
+                        let order_filled = Engine::filled(&order, volume_decimals);
+                        let cloned_counter_order = counter_order.clone();
+                        let counter_order_filled = Engine::filled(&cloned_counter_order, volume_decimals);
+
+                        // if counter_order has filled, remove it from counter_book
+                        if counter_order_filled {
+                            counter_book.remove(&cloned_counter_order);
+                        }
 
                         match order.side {
                             Side::Sell => {
