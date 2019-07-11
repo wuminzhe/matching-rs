@@ -1,7 +1,7 @@
 use mysql::Pool;
 use crate::models::Order;
-use crate::side::Side;
-use crate::limit_order::LimitOrder;
+use crate::engine::Side;
+use crate::engine::LimitOrder;
 use crate::engine::Engine;
 use crate::engine::TradeEvent;
 
@@ -14,9 +14,9 @@ pub struct OrderManager<'a>
 
 impl<'a> OrderManager<'a> {
     // 返回的对象的成员的生命周期小于等于'b, 'b的实际值是pool和on_trade两者生命周期的小值
-    pub fn new<'b>(pool: &'b Pool, on_trade: &'b Fn(TradeEvent)) -> OrderManager<'b>
+    pub fn new<'b>(pool: &'b Pool, on_trade: &'b dyn Fn(TradeEvent)) -> OrderManager<'b>
     {
-        let mut engine = Engine::new(String::from("ethbtc"), 8, on_trade);
+        let engine = Engine::new(8, on_trade);
 
         OrderManager {
             engine: engine,

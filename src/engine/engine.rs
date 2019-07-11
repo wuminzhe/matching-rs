@@ -1,20 +1,13 @@
-use crate::side::Side;
-use crate::order_book::OrderBook;
-use crate::order_book_pair::OrderBookPair;
-use crate::limit_order::LimitOrder;
-use bigdecimal::BigDecimal;
-use bigdecimal::FromPrimitive;
-use bigdecimal::ToPrimitive;
-
-static PRICE_DECIMALS: u32 = 8;
-static VOLUME_DECIMALS: u32 = 8;
+use crate::engine::Side;
+use crate::engine::OrderBook;
+use crate::engine::OrderBookPair;
+use crate::engine::LimitOrder;
 
 pub struct Engine<'a>
 {
-    market: String,
     order_book_pair: OrderBookPair,
     volume_decimals: u32,
-    on_trade: &'a Fn(TradeEvent),
+    on_trade: &'a dyn Fn(TradeEvent),
 }
 
 pub struct TradeEvent {
@@ -29,9 +22,8 @@ pub struct TradeEvent {
 
 impl<'a> Engine<'a> 
 {
-    pub fn new(market: String, volume_decimals: u32, on_trade: &Fn(TradeEvent)) -> Engine {
+    pub fn new(volume_decimals: u32, on_trade: &dyn Fn(TradeEvent)) -> Engine {
         Engine {
-            market: market,
             order_book_pair: OrderBookPair::new(),
             volume_decimals: volume_decimals,
             on_trade: on_trade,
@@ -52,7 +44,7 @@ impl<'a> Engine<'a>
         order.volume < min_volume
     }
 
-    fn do_matching(on_trade: &Fn(TradeEvent), order: &mut LimitOrder, counter_book: &mut OrderBook, volume_decimals: u32) {
+    fn do_matching(on_trade: &dyn Fn(TradeEvent), order: &mut LimitOrder, counter_book: &mut OrderBook, volume_decimals: u32) {
         match counter_book.top_mut() {
             Some(counter_order) => {
                 match order.trade_with(counter_order) {

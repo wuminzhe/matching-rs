@@ -1,4 +1,4 @@
-use crate::side::Side;
+use crate::engine::Side;
 use bigdecimal::BigDecimal;
 use bigdecimal::FromPrimitive;
 use bigdecimal::ToPrimitive;
@@ -57,9 +57,6 @@ impl LimitOrder {
 mod tests {
     use super::LimitOrder;
     use crate::side::Side;
-    use bigdecimal::BigDecimal;
-    use bigdecimal::FromPrimitive;
-    use bigdecimal::ToPrimitive;
 
     fn create_limit_order() -> LimitOrder {
         LimitOrder::new(
