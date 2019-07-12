@@ -1,9 +1,13 @@
+use std::error::Error;
 use mysql::Pool;
+
 use crate::models::Order;
 use crate::engine::Side;
 use crate::engine::LimitOrder;
 use crate::engine::Engine;
 use crate::engine::TradeEvent;
+
+use crate::errors::TinyError;
 
 // 每个成员的生命周期小于等于'a
 pub struct OrderManager<'a> 
@@ -29,16 +33,34 @@ impl<'a> OrderManager<'a> {
         }
     }
 
-    pub fn submit(&mut self, price: f64, volume: f64, side: u8, created_by: &str) {
+    pub fn submit(&mut self, price: f64, volume: f64, side: u8, created_by: &str) -> Result<u64, Box<Error>>{
         // price 采用四舍五入
         let price = OrderManager::round(price, self.price_decimals);
         // volume 采用截断
         let volume = OrderManager::floor(volume, self.volume_decimals);
 
-        // 创建订单
-        let id: u64 = Order::create(self.pool, price, volume, side, created_by);
+        if price != 0.0 && volume != 0.0 {
+            // 创建订单
+            let id: u64 = Order::create(self.pool, price, volume, side, created_by);
 
-        // into engine
+            // 入撮合引擎
+            let side: Side = if side == 0 { Side::Sell } else { Side::Buy };
+            let limit_order = LimitOrder::new(
+                id,
+                side,
+                volume,
+                price,
+            );
+            &(self.engine).submit(limit_order);
+            Ok(id)
+        } else {
+            Err(Box::new(TinyError::new("")))
+        }
+    }
+
+    pub fn cancel(&mut self, id: u64, price: f64, volume: f64, side: u8, created_by: &str) {
+        let price = OrderManager::round(price, self.price_decimals);
+
         let side: Side = if side == 0 { Side::Sell } else { Side::Buy };
         let limit_order = LimitOrder::new(
             id,
@@ -46,7 +68,15 @@ impl<'a> OrderManager<'a> {
             volume,
             price,
         );
-        &(self.engine).submit(limit_order);
+        &(self.engine).cancel(limit_order);
+    }
+
+    pub fn print_orderbook(&self) {
+        println!("+------------------------------------------------------------------------------");
+        println!("|{:?}", self.engine.order_book_pair.sell_order_book);
+        println!("+--- ask: ↑ --- bid: ↓ ---");
+        println!("|{:?}", self.engine.order_book_pair.buy_order_book);
+        println!("+------------------------------------------------------------------------------");
     }
 
     // tool

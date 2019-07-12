@@ -104,8 +104,8 @@ impl OrderBook {
 #[cfg(test)]
 mod tests {
     use super::OrderBook;
-    use crate::limit_order::LimitOrder;
-    use crate::side::Side;
+    use crate::engine::LimitOrder;
+    use crate::engine::Side;
 
     #[test]
     fn can_create_new_order_book() {
@@ -144,6 +144,7 @@ mod tests {
             // timestamp: 12345678
         };
         order_book.add(limit_order);
+        assert!(!order_book.is_empty());
 
         let order = order_book.top().unwrap().clone();
         let o = order_book.remove(&order).unwrap();

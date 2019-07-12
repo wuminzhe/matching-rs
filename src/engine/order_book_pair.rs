@@ -3,8 +3,8 @@ use crate::engine::OrderBook;
 
 #[derive(Debug)]
 pub struct OrderBookPair {
-    sell_order_book: OrderBook,
-    buy_order_book: OrderBook
+    pub sell_order_book: OrderBook,
+    pub buy_order_book: OrderBook
 }
 
 impl OrderBookPair {
@@ -35,7 +35,7 @@ impl OrderBookPair {
 #[cfg(test)]
 mod tests {
     use super::OrderBookPair;
-    use crate::side::Side;
+    use crate::engine::Side;
 
     #[test]
     fn can_get_books() {

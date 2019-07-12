@@ -59,8 +59,11 @@ impl LimitOrder {
 
 #[cfg(test)]
 mod tests {
+    use bigdecimal::BigDecimal;
+    use bigdecimal::FromPrimitive;
+    use bigdecimal::ToPrimitive;
     use super::LimitOrder;
-    use crate::side::Side;
+    use crate::engine::Side; 
 
     fn create_limit_order() -> LimitOrder {
         LimitOrder::new(
@@ -79,7 +82,7 @@ mod tests {
         limit_order.fill(10.0);
         assert_eq!(limit_order.volume, 22.12);
         limit_order.fill(22.12);
-        assert!(limit_order.filled(8));
+        assert!(limit_order.filled());
     }
 
     #[test]

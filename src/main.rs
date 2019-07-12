@@ -5,6 +5,7 @@ use mysql::*;
 mod engine;
 mod models;
 mod managers;
+mod errors;
 
 use engine::*;
 use models::*;
@@ -56,6 +57,9 @@ fn main(){
     // order_manager.submit(0.12, 11.000000035, 0, "u123456");
     // order_manager.submit(0.13, 11.00000003, 1, "u123456");
 
-    order_manager.submit(0.000003456, 11.000000035, 0, "u123456");
+    let id = order_manager.submit(0.000003456, 11.000000035, 0, "u123456").unwrap();
+    order_manager.print_orderbook();
+    order_manager.cancel(id, 0.000003456, 11.000000035, 0, "u123456");
+    order_manager.print_orderbook();
     order_manager.submit(0.000004,    11.0000000315, 1, "u123456");
 }

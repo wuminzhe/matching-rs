@@ -5,7 +5,7 @@ use crate::engine::LimitOrder;
 
 pub struct Engine<'a>
 {
-    order_book_pair: OrderBookPair,
+    pub order_book_pair: OrderBookPair,
     on_trade: &'a dyn Fn(TradeEvent),
 }
 
@@ -26,6 +26,11 @@ impl<'a> Engine<'a>
             order_book_pair: OrderBookPair::new(),
             on_trade: on_trade,
         }
+    }
+
+    pub fn cancel(&mut self, order: LimitOrder) {
+        let (book, counter_book) = self.order_book_pair.get_books_mut(order.side);
+        book.remove(&order);
     }
 
     pub fn submit(&mut self, mut order: LimitOrder) {
@@ -104,17 +109,19 @@ impl<'a> Engine<'a>
 #[cfg(test)]
 mod tests {
     use super::Engine;
-    use crate::side::Side;
-    use crate::limit_order::LimitOrder;
+    use crate::engine::Side;
+    use crate::engine::LimitOrder;
+    use super::TradeEvent;
 
-    fn create_engine() -> Engine {
-        let mut engine = Engine::new(String::from("ethbtc"), 8);
+    fn create_engine<'a>(on_trade: &'a dyn Fn(TradeEvent)) -> Engine<'a> {
+        let mut engine = Engine::new(on_trade);
+
         let mut order1 = LimitOrder {
             id: 1,
             price: 1.34,
             volume: 1.2,
             side: Side::Buy,
-            timestamp: 12345678
+            
         };
         engine.submit(order1);
         
@@ -123,7 +130,7 @@ mod tests {
             price: 1.35,
             volume: 0.9,
             side: Side::Buy,
-            timestamp: 12345678
+            
         };
         engine.submit(order2);
         return engine;
@@ -131,7 +138,10 @@ mod tests {
 
     #[test]
     fn can_do_matching1() {
-        let mut engine = create_engine();
+        let on_trade = |event: TradeEvent| {
+             println!("price: {}, volume: {}", event.price, event.volume);
+        };
+        let mut engine = create_engine(&on_trade);
 
         let (buy_book, _sell_book) = engine.order_book_pair.get_books(Side::Buy);
         assert_eq!(2, buy_book.len());
@@ -142,7 +152,7 @@ mod tests {
             price: 1.345,
             volume: 1.2,
             side: Side::Sell,
-            timestamp: 12345678
+            
         };
         engine.submit(order3);
 
@@ -155,14 +165,17 @@ mod tests {
 
     #[test]
     fn can_do_matching2() {
-        let mut engine = create_engine();
+        let on_trade = |event: TradeEvent| {
+             println!("price: {}, volume: {}", event.price, event.volume);
+        };
+        let mut engine = create_engine(&on_trade);
 
         let mut order3 = LimitOrder {
             id: 3,
             price: 1.345,
             volume: 0.8,
             side: Side::Sell,
-            timestamp: 12345678
+            
         };
         engine.submit(order3);
 
