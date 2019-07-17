@@ -24,7 +24,7 @@ impl Order {
         let mut stmt = pool.prepare(r"INSERT INTO orders 
                             (price, volume, origin_volume, state, side, created_by)
                         VALUES
-                            (:price, :volume, :origin_volume, :state, :side, :created_by)").unwrap();
+                            (cast(:price as decimal(32,16)), cast(:volume as decimal(32,16)), :origin_volume, :state, :side, :created_by)").unwrap();
         let id = stmt.execute((
             price,
             volume,
@@ -35,6 +35,16 @@ impl Order {
         )).unwrap().last_insert_id();
 
         id
+    }
+
+    pub fn set_canceled<T>(conn: &mut T, id: u64)
+    where T: GenericConnection
+    {
+        let mut stmt = conn.prepare(r"UPDATE orders SET state=:state WHERE id=:id").unwrap();
+        stmt.execute((
+            CANCEL,
+            id,
+        ));
     }
 
     pub fn sub_volume<T>(conn: &mut T, id: u64, delta_volume: f64, filled: bool)

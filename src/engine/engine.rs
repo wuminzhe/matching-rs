@@ -7,6 +7,7 @@ pub struct Engine<'a>
 {
     pub order_book_pair: OrderBookPair,
     on_trade: &'a dyn Fn(TradeEvent),
+    on_cancel: &'a dyn Fn(u64),
 }
 
 pub struct TradeEvent {
@@ -21,16 +22,20 @@ pub struct TradeEvent {
 
 impl<'a> Engine<'a> 
 {
-    pub fn new(on_trade: &dyn Fn(TradeEvent)) -> Engine {
+    pub fn new<'b>(on_trade: &'b dyn Fn(TradeEvent), on_cancel: &'b dyn Fn(u64)) -> Engine<'b> {
         Engine {
             order_book_pair: OrderBookPair::new(),
             on_trade: on_trade,
+            on_cancel: on_cancel,
         }
     }
 
     pub fn cancel(&mut self, order: LimitOrder) {
         let (book, counter_book) = self.order_book_pair.get_books_mut(order.side);
-        book.remove(&order);
+        match book.remove(&order) {
+            Some(removed_order) => (self.on_cancel)(removed_order.id),
+            None => ()
+        };
     }
 
     pub fn submit(&mut self, mut order: LimitOrder) {
